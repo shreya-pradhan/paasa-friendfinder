@@ -1,30 +1,51 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuestionnaire } from '@/contexts/QuestionnaireContext';
-import { personalityQuestions } from '@/data/questions';
-import EmailForm from '@/components/EmailForm';
-import QuestionCard from '@/components/QuestionCard';
-import ProgressIndicator from '@/components/ProgressIndicator';
-import CompletionScreen from '@/components/CompletionScreen';
+import { Users, Globe, Sparkles, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Heart, Users, Globe, Sparkles } from 'lucide-react';
 import { QuestionnaireProvider } from '@/contexts/QuestionnaireContext';
 import { useToast } from '@/hooks/use-toast';
 
+const TallySurveyEmbed = () => {
+  useEffect(() => {
+    // This ensures the Tally embed script is loaded only once
+    const script = document.createElement('script');
+    script.src = 'https://tally.so/widgets/embed.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  return (
+    <iframe
+      data-tally-src="https://tally.so/embed/wMMAzE?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1"
+      width="100%"
+      height="600"
+      frameBorder="0"
+      marginHeight={0}
+      marginWidth={0}
+      title="Personality Survey"
+      className="tally-iframe"
+    ></iframe>
+  );
+};
+
 const QuestionnairePage: React.FC = () => {
-  const { currentQuestionIndex, isCompleted, submitQuestionnaire, isSubmitting, setEmail, goToNextQuestion } = useQuestionnaire();
+  const { setEmail } = useQuestionnaire();
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [joinedWaitlist, setJoinedWaitlist] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
   const { toast } = useToast();
   
-  // If user has completed all questions but not yet submitted
-  const showSubmitScreen = currentQuestionIndex === personalityQuestions.length;
-
   const handleJoinWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
     if (waitlistEmail && waitlistEmail.includes('@')) {
       setJoinedWaitlist(true);
+      setEmail(waitlistEmail);
       toast({
         title: "Success!",
         description: "You've been added to our waiting list.",
@@ -32,18 +53,13 @@ const QuestionnairePage: React.FC = () => {
     }
   };
   
-  const startQuestionnaire = () => {
-    if (joinedWaitlist) {
-      setEmail(waitlistEmail);
-      goToNextQuestion();
-    } else {
-      goToNextQuestion();
-    }
+  const startSurvey = () => {
+    setShowSurvey(true);
   };
   
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
-      {currentQuestionIndex === 0 && !showJoinForm && !joinedWaitlist && (
+      {!showJoinForm && !joinedWaitlist && !showSurvey && (
         <header className="text-center">
           <div className="flex justify-center mb-3">
             <div className="bg-orange-100 p-3 rounded-full">
@@ -67,7 +83,7 @@ const QuestionnairePage: React.FC = () => {
         </header>
       )}
       
-      {currentQuestionIndex === 0 && showJoinForm && !joinedWaitlist && (
+      {showJoinForm && !joinedWaitlist && !showSurvey && (
         <div className="question-card w-full max-w-md mx-auto">
           <h2 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h2>
           <form onSubmit={handleJoinWaitlist} className="space-y-4">
@@ -88,7 +104,7 @@ const QuestionnairePage: React.FC = () => {
         </div>
       )}
       
-      {currentQuestionIndex === 0 && joinedWaitlist && (
+      {joinedWaitlist && !showSurvey && (
         <div className="question-card w-full max-w-md mx-auto text-center">
           <div className="mb-4 flex justify-center">
             <div className="bg-orange-100 p-3 rounded-full">
@@ -100,7 +116,7 @@ const QuestionnairePage: React.FC = () => {
             While we prepare your perfect circle, take our personality test to help us match you with like-minded friends.
           </p>
           <Button 
-            onClick={startQuestionnaire}
+            onClick={startSurvey}
             size="lg"
           >
             Take the Survey
@@ -108,43 +124,11 @@ const QuestionnairePage: React.FC = () => {
         </div>
       )}
       
-      {currentQuestionIndex > 0 && !isCompleted && (
-        <ProgressIndicator currentIndex={currentQuestionIndex} />
-      )}
-      
-      {currentQuestionIndex === 0 && !showJoinForm && !joinedWaitlist && !isCompleted && (
-        // Original EmailForm is still here but hidden by our new intro
-        <div className="hidden">
-          <EmailForm />
+      {showSurvey && (
+        <div className="w-full mx-auto">
+          <h2 className="text-2xl font-bold mb-4 text-center">Personality Survey</h2>
+          <TallySurveyEmbed />
         </div>
-      )}
-      
-      {currentQuestionIndex > 0 && currentQuestionIndex <= personalityQuestions.length && !isCompleted && (
-        <QuestionCard question={personalityQuestions[currentQuestionIndex - 1]} />
-      )}
-      
-      {showSubmitScreen && !isCompleted && (
-        <div className="question-card w-full max-w-lg mx-auto text-center p-6">
-          <div className="mb-6 flex justify-center">
-            <div className="bg-orange-100 p-3 rounded-full">
-              <Heart className="h-8 w-8 text-orange-500" />
-            </div>
-          </div>
-          <h3 className="text-xl font-medium mb-4">You're all set!</h3>
-          <p className="mb-6 text-muted-foreground">
-            Thanks for completing the questionnaire. Submit now to find your perfect friends!
-          </p>
-          <Button 
-            onClick={submitQuestionnaire} 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Find My Friends"}
-          </Button>
-        </div>
-      )}
-      
-      {isCompleted && (
-        <CompletionScreen />
       )}
       
       <footer className="mt-12 text-center text-sm text-muted-foreground">
